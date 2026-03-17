@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import { useProducts, useCategories, useAddCategory } from '@/hooks/useSupabase';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,19 +30,41 @@ const Stock = () => {
 
   const [localColumns, setLocalColumns] = useState<string[]>([]);
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editItem) return;
-    queryClient.setQueryData(['products'], (old: any) => {
-      if (!old) return old;
-      return old.map((p: any) => p.id === editItem.id ? { ...p, expiry_date: editItem.expiry_date } : p);
-    });
-    toast.success('Producto actualizado localmente (fecha modificada).');
-    setEditItem(null);
+    
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .update({ 
+          name: editItem.name, 
+          expiry_date: editItem.expiry_date 
+        })
+        .eq('id', editItem.id)
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
+      
+      queryClient.setQueryData(['products'], (old: any) => {
+        if (!old) return old;
+        return old.map((p: any) => p.id === editItem.id ? { ...p, expiry_date: editItem.expiry_date } : p);
+      });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      toast.success('Producto actualizado correctamente.');
+      setEditItem(null);
+    } catch(err: any) {
+      toast.error('Error al actualizar el producto: ' + err.message);
+    }
   };
 
   const getExpiryStatus = (date: string | null) => {
     if (!date) return 'none';
-    const diff = differenceInDays(new Date(date), new Date());
+    const [year, month, day] = date.split('-').map(Number);
+    const expiry = new Date(year, month - 1, day);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diff = differenceInDays(expiry, today);
     if (diff < 7) return 'critical';
     if (diff >= 7 && diff <= 30) return 'warning';
     return 'ok';
@@ -201,14 +224,14 @@ const Stock = () => {
                           {item.expiry_date ? (
                             expiryStatus === 'critical' ? (
                               <Badge className="bg-red-500 hover:bg-red-600 text-white border-transparent">
-                                {format(new Date(item.expiry_date), 'dd/MM/yyyy')}
+                                {item.expiry_date.split('-').reverse().join('/')}
                               </Badge>
                             ) : expiryStatus === 'warning' ? (
                               <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white border-transparent text-slate-900">
-                                {format(new Date(item.expiry_date), 'dd/MM/yyyy')}
+                                {item.expiry_date.split('-').reverse().join('/')}
                               </Badge>
                             ) : (
-                              <span className="text-foreground">{format(new Date(item.expiry_date), 'dd/MM/yyyy')}</span>
+                              <span className="text-foreground">{item.expiry_date.split('-').reverse().join('/')}</span>
                             )
                           ) : (
                             <span className="text-muted-foreground">-</span>

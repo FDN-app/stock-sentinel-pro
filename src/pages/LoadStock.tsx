@@ -78,7 +78,11 @@ const LoadStock = () => {
 
   const getExpiryStatus = (date: string | null) => {
     if (!date) return 'none';
-    const diff = differenceInDays(new Date(date), new Date());
+    const [year, month, day] = date.split('-').map(Number);
+    const expiry = new Date(year, month - 1, day);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diff = differenceInDays(expiry, today);
     if (diff < 7) return 'critical';
     if (diff >= 7 && diff <= 30) return 'warning';
     return 'ok';

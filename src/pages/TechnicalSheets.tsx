@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ImageIcon, DollarSign, Truck, CalendarDays } from 'lucide-react';
 
-const FichasTecnicas = () => {
+const TechnicalSheets = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
@@ -45,4 +45,4 @@ const FichasTecnicas = () => {
   );
 };
 
-export default FichasTecnicas;
+export default TechnicalSheets;

@@ -4,16 +4,16 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
-import AppLayout from "@/components/AppLayout";
+import AppLayout from "@/components/layout/AppLayout";
 import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
-import GestionStock from "@/pages/GestionStock";
-import CargaStock from "@/pages/CargaStock";
-import FichasTecnicas from "@/pages/FichasTecnicas";
-import Requisiciones from "@/pages/Requisiciones";
-import Historico from "@/pages/Historico";
-import Usuarios from "@/pages/Usuarios";
-import Configuracion from "@/pages/Configuracion";
+import Stock from "@/pages/Stock";
+import LoadStock from "@/pages/LoadStock";
+import TechnicalSheets from "@/pages/TechnicalSheets";
+import Requisitions from "@/pages/Requisitions";
+import History from "@/pages/History";
+import Users from "@/pages/Users";
+import Settings from "@/pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,13 +31,13 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/gestion" element={<ProtectedRoute adminOnly><GestionStock /></ProtectedRoute>} />
-      <Route path="/carga" element={<ProtectedRoute><CargaStock /></ProtectedRoute>} />
-      <Route path="/fichas" element={<ProtectedRoute><FichasTecnicas /></ProtectedRoute>} />
-      <Route path="/requisiciones" element={<ProtectedRoute><Requisiciones /></ProtectedRoute>} />
-      <Route path="/historico" element={<ProtectedRoute><Historico /></ProtectedRoute>} />
-      <Route path="/usuarios" element={<ProtectedRoute adminOnly><Usuarios /></ProtectedRoute>} />
-      <Route path="/configuracion" element={<ProtectedRoute adminOnly><Configuracion /></ProtectedRoute>} />
+      <Route path="/gestion" element={<ProtectedRoute adminOnly><Stock /></ProtectedRoute>} />
+      <Route path="/carga" element={<ProtectedRoute><LoadStock /></ProtectedRoute>} />
+      <Route path="/fichas" element={<ProtectedRoute><TechnicalSheets /></ProtectedRoute>} />
+      <Route path="/requisiciones" element={<ProtectedRoute><Requisitions /></ProtectedRoute>} />
+      <Route path="/historico" element={<ProtectedRoute><History /></ProtectedRoute>} />
+      <Route path="/usuarios" element={<ProtectedRoute adminOnly><Users /></ProtectedRoute>} />
+      <Route path="/configuracion" element={<ProtectedRoute adminOnly><Settings /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

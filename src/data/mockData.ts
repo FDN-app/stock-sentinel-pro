@@ -1,13 +1,13 @@
 export interface User {
   email: string;
   password: string;
-  name: string;
-  role: 'Admin' | 'Staff';
+  nombre: string;
+  rol: 'Admin' | 'Staff';
 }
 
 export const USERS: User[] = [
-  { email: 'admin@gmail.com', password: 'admin', name: 'Carlos Méndez', role: 'Admin' },
-  { email: 'staff@gmail.com', password: 'staff', name: 'María González', role: 'Staff' },
+  { email: 'admin@gmail.com', password: 'admin', nombre: 'Carlos Méndez', rol: 'Admin' },
+  { email: 'staff@gmail.com', password: 'staff', nombre: 'María González', rol: 'Staff' },
 ];
 
 export interface StockItem {

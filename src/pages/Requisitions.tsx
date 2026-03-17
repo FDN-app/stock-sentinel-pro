@@ -10,7 +10,7 @@ const statusStyles: Record<string, string> = {
   Rechazado: 'bg-destructive/15 text-destructive border-destructive/30',
 };
 
-const Requisiciones = () => {
+const Requisitions = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -54,4 +54,4 @@ const Requisiciones = () => {
   );
 };
 
-export default Requisiciones;
+export default Requisitions;

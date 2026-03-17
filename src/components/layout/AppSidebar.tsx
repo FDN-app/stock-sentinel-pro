@@ -20,7 +20,7 @@ const NAV_ITEMS = [
 ];
 
 const AppSidebar = () => {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, profile, logout, isAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
@@ -34,17 +34,17 @@ const AppSidebar = () => {
   };
 
   const sidebarContent = (
-    <div className="flex flex-col h-full" style={{ background: 'hsl(217 33% 17%)' }}>
+    <div className="flex flex-col h-full bg-sidebar border-r border-sidebar-border relative z-20">
       {/* Logo */}
-      <div className="flex items-center gap-2 px-4 h-16 border-b" style={{ borderColor: 'hsl(215 25% 27%)' }}>
-        <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-          <Package className="h-4 w-4" style={{ color: 'white' }} />
+      <div className="flex items-center gap-3 px-6 h-20 border-b border-sidebar-border">
+        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-sidebar-primary to-sidebar-primary/80 shadow-lg flex items-center justify-center flex-shrink-0 animate-float" style={{ animationDuration: '4s' }}>
+          <Package className="h-5 w-5 text-sidebar-primary-foreground" />
         </div>
-        {!collapsed && <span className="font-bold text-base" style={{ color: 'hsl(210 40% 98%)' }}>Stock Control</span>}
+        {!collapsed && <span className="font-bold text-lg tracking-tight text-sidebar-foreground">Stock Sentinel</span>}
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
+      <nav className="flex-1 py-6 px-3 space-y-2 overflow-y-auto">
         {filteredItems.map(item => {
           const active = location.pathname === item.path;
           return (
@@ -52,14 +52,13 @@ const AppSidebar = () => {
               key={item.path}
               onClick={() => handleNav(item.path)}
               className={cn(
-                'w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors',
+                'w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 group',
                 active
-                  ? 'bg-primary'
-                  : 'hover:bg-[hsl(215,25%,27%)]'
+                  ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-md'
+                  : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
               )}
-              style={{ color: 'hsl(210 40% 98%)' }}
             >
-              <item.icon className="h-4 w-4 flex-shrink-0" />
+              <item.icon className={cn('h-5 w-5 flex-shrink-0 transition-transform duration-300', !active && 'group-hover:scale-110')} />
               {!collapsed && <span>{item.label}</span>}
             </button>
           );
@@ -67,19 +66,21 @@ const AppSidebar = () => {
       </nav>
 
       {/* User info */}
-      <div className="px-3 py-4 border-t" style={{ borderColor: 'hsl(215 25% 27%)' }}>
+      <div className="px-4 py-6 border-t border-sidebar-border bg-sidebar/50 backdrop-blur-sm mt-auto">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-            <span className="text-xs font-bold" style={{ color: 'white' }}>{user?.name.split(' ').map(n => n[0]).join('')}</span>
+          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-sidebar-primary to-sidebar-primary/80 shadow-sm flex items-center justify-center flex-shrink-0">
+            <span className="text-sm font-bold text-sidebar-primary-foreground">
+              {profile?.full_name ? profile.full_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : 'U'}
+            </span>
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate" style={{ color: 'hsl(210 40% 98%)' }}>{user?.name}</p>
-              <p className="text-xs truncate" style={{ color: 'hsl(215 20% 65%)' }}>{user?.role}</p>
+              <p className="text-sm font-semibold truncate text-sidebar-foreground">{profile?.full_name || user?.email || 'Usuario'}</p>
+              <p className="text-xs truncate text-sidebar-foreground/60">{profile?.role || 'Staff'}</p>
             </div>
           )}
-          <button onClick={logout} className="p-1.5 rounded-md hover:bg-[hsl(215,25%,27%)] transition-colors" title="Cerrar sesión">
-            <LogOut className="h-4 w-4" style={{ color: 'hsl(215 20% 65%)' }} />
+          <button onClick={logout} className="p-2 rounded-lg hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors text-sidebar-foreground/60" title="Cerrar sesión">
+            <LogOut className="h-4 w-4" />
           </button>
         </div>
       </div>

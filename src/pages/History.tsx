@@ -11,7 +11,7 @@ const tipoStyles: Record<string, string> = {
   Ajuste: 'bg-warning/15 text-warning',
 };
 
-const Historico = () => {
+const History = () => {
   const [catFilter, setCatFilter] = useState('all');
   const [tipoFilter, setTipoFilter] = useState('all');
 
@@ -81,4 +81,4 @@ const Historico = () => {
   );
 };
 
-export default Historico;
+export default History;

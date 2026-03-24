@@ -10,8 +10,8 @@ import { Button } from '@/components/ui/button';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', path: '/', icon: LayoutDashboard, adminOnly: false },
-  { label: 'Gestión de Stock', path: '/gestion', icon: Package, adminOnly: true },
-  { label: 'Carga de Stock', path: '/carga', icon: Upload, adminOnly: false },
+  { label: 'Inventario', path: '/inventario', icon: Package, adminOnly: true },
+  { label: 'Conteo Diario', path: '/conteo', icon: Upload, adminOnly: false },
   { label: 'Fichas Técnicas', path: '/fichas', icon: FileText, adminOnly: false },
   { label: 'Requisiciones', path: '/requisiciones', icon: ClipboardList, adminOnly: false },
   { label: 'Histórico', path: '/historico', icon: History, adminOnly: false },

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,6 +14,22 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkResidualSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await supabase.auth.signOut();
+          localStorage.clear();
+          sessionStorage.clear();
+        }
+      } catch (error) {
+        console.error('Error checking residual session:', error);
+      }
+    };
+    checkResidualSession();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,8 +111,8 @@ const Login = () => {
           <div className="mt-8 p-4 rounded-xl bg-background/40 border border-border/50 backdrop-blur-sm">
             <p className="text-xs text-muted-foreground text-center flex flex-col gap-1">
               <strong className="text-foreground">Cuentas de demostración:</strong>
-              <span>Admin: admin@stocksentinel.local / adminpassword</span>
-              <span>Staff: staff@stocksentinel.local / staffpassword</span>
+              <span>Admin: admin@stocksentinel.local / admin123</span>
+              <span>Staff: staff@stocksentinel.local / staff123</span>
             </p>
           </div>
         </div>

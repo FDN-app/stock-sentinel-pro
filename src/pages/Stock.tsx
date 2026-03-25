@@ -182,17 +182,17 @@ const Stock = () => {
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
-          <div className="relative">
+          <div className="relative w-full sm:w-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
-              className="pl-9 w-64 bg-[#111318] border-[#1e2130] focus-visible:ring-primary h-10" 
+              className="pl-9 w-full sm:w-64 bg-[#111318] border-[#1e2130] focus-visible:ring-primary h-10" 
               placeholder="Buscar producto..." 
               value={search} 
               onChange={e => setSearch(e.target.value)} 
             />
           </div>
           <Select value={catFilter} onValueChange={setCatFilter}>
-            <SelectTrigger className="w-48 bg-[#111318] border-[#1e2130] h-10">
+            <SelectTrigger className="w-full sm:w-48 bg-[#111318] border-[#1e2130] h-10">
               <SelectValue placeholder="Categoría" />
             </SelectTrigger>
             <SelectContent className="bg-[#111318] border-[#1e2130]">
@@ -203,11 +203,11 @@ const Stock = () => {
           
           <Dialog open={openAdd} onOpenChange={setOpenAdd}>
             <DialogTrigger asChild>
-              <Button className="bg-primary hover:bg-primary/90 text-white shadow-lg h-10 px-4">
+              <Button className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white shadow-lg h-10 px-4">
                 <Plus className="h-4 w-4 mr-2" /> Agregar Ítem
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] border-[#1e2130] bg-[#111318] shadow-2xl">
+            <DialogContent className="sm:max-w-[500px] border-[#1e2130] bg-[#111318] text-[#f1f5f9] shadow-2xl">
               <DialogHeader>
                 <DialogTitle className="text-xl font-bold text-white">Agregar Nuevo Ítem</DialogTitle>
               </DialogHeader>
@@ -215,7 +215,7 @@ const Stock = () => {
                 <div className="grid grid-cols-2 gap-4">
                    <div className="space-y-2 col-span-2">
                      <Label className="flex items-center gap-2"><Box className="w-4 h-4 text-muted-foreground"/> Nombre *</Label>
-                     <Input required className="bg-[#0cf1414] border-[#1e2130]" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Ej. Lomo de Res" />
+                     <Input required className="bg-[#0d0f14] text-white border-[#1e2130]" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Ej. Lomo de Res" />
                    </div>
 
                    <div className="space-y-2 col-span-2">
@@ -227,13 +227,13 @@ const Stock = () => {
                     </div>
                     {isAddingCategory ? (
                       <div className="flex gap-2 items-center">
-                        <Input autoFocus className="bg-[#0cf1414] border-primary/50 flex-1" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} placeholder="Nueva categoría..." />
+                        <Input autoFocus className="bg-[#0d0f14] text-white border-primary/50 flex-1" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} placeholder="Nueva categoría..." />
                         <Button type="button" size="sm" onClick={handleAddCategory} disabled={addCategory.isPending} className="bg-primary"><Save className="w-4 h-4" /></Button>
                         <Button type="button" variant="ghost" size="icon" onClick={() => setIsAddingCategory(false)}><X className="w-4 h-4" /></Button>
                       </div>
                     ) : (
                       <Select required value={formData.category_id} onValueChange={v => setFormData({...formData, category_id: v})}>
-                        <SelectTrigger className="bg-[#0cf1414] border-[#1e2130]"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                        <SelectTrigger className="bg-[#0d0f14] text-white border-[#1e2130]"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                         <SelectContent className="bg-[#111318] border-[#1e2130]">
                           {safeCategories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                         </SelectContent>
@@ -243,25 +243,25 @@ const Stock = () => {
 
                    <div className="space-y-2">
                      <Label className="flex items-center gap-2"><Scale className="w-4 h-4 text-muted-foreground"/> Unidad *</Label>
-                     <Input required className="bg-[#0cf1414] border-[#1e2130]" value={formData.unit} onChange={e => setFormData({...formData, unit: e.target.value})} placeholder="Ej. kg, unid" />
+                     <Input required className="bg-[#0d0f14] text-white border-[#1e2130]" value={formData.unit} onChange={e => setFormData({...formData, unit: e.target.value})} placeholder="Ej. kg, unid" />
                    </div>
                    <div className="space-y-2">
                      <Label className="flex items-center gap-2"><ShieldAlert className="w-4 h-4 text-muted-foreground"/> Stock Mín. *</Label>
-                     <Input required type="number" min="0" step="0.1" className="bg-[#0cf1414] border-[#1e2130]" value={formData.min_stock} onChange={e => setFormData({...formData, min_stock: e.target.value})} placeholder="0" />
+                     <Input required type="number" min="0" step="0.1" className="bg-[#0d0f14] text-white border-[#1e2130]" value={formData.min_stock} onChange={e => setFormData({...formData, min_stock: e.target.value})} placeholder="0" />
                    </div>
 
                    <div className="space-y-2">
                      <Label className="flex items-center gap-2"><Truck className="w-4 h-4 text-muted-foreground"/> Proveedor</Label>
-                     <Input className="bg-[#0cf1414] border-[#1e2130]" value={formData.supplier} onChange={e => setFormData({...formData, supplier: e.target.value})} placeholder="Ej. Distribuidora X" />
+                     <Input className="bg-[#0d0f14] text-white border-[#1e2130]" value={formData.supplier} onChange={e => setFormData({...formData, supplier: e.target.value})} placeholder="Ej. Distribuidora X" />
                    </div>
                    <div className="space-y-2">
                      <Label className="flex items-center gap-2"><DollarSign className="w-4 h-4 text-muted-foreground"/> Precio Costo</Label>
-                     <Input type="number" step="0.01" className="bg-[#0cf1414] border-[#1e2130]" value={formData.costPrice} onChange={e => setFormData({...formData, costPrice: e.target.value})} placeholder="0.00" />
+                     <Input type="number" step="0.01" className="bg-[#0d0f14] text-white border-[#1e2130]" value={formData.costPrice} onChange={e => setFormData({...formData, costPrice: e.target.value})} placeholder="0.00" />
                    </div>
 
                    <div className="space-y-2 col-span-2">
                      <Label className="flex items-center gap-2"><Calendar className="w-4 h-4 text-muted-foreground"/> Vencimiento</Label>
-                     <Input type="date" className="bg-[#0cf1414] border-[#1e2130]" value={formData.expiry_date} onChange={e => setFormData({...formData, expiry_date: e.target.value})} />
+                     <Input type="date" className="bg-[#0d0f14] text-white border-[#1e2130]" value={formData.expiry_date} onChange={e => setFormData({...formData, expiry_date: e.target.value})} />
                    </div>
                 </div>
                 <DialogFooter className="mt-4 pt-4 border-t border-[#1e2130]">
@@ -379,7 +379,7 @@ const Stock = () => {
 
       {/* Edit Modal */}
       <Dialog open={!!editItem} onOpenChange={(open) => !open && setEditItem(null)}>
-        <DialogContent className="sm:max-w-[500px] border-[#1e2130] bg-[#111318] shadow-2xl">
+        <DialogContent className="sm:max-w-[500px] border-[#1e2130] bg-[#111318] text-[#f1f5f9] shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-white">Editar Ítem</DialogTitle>
           </DialogHeader>
@@ -387,13 +387,13 @@ const Stock = () => {
             <div className="grid grid-cols-2 gap-4 py-4">
               <div className="space-y-2 col-span-2">
                 <Label>Nombre *</Label>
-                <Input required className="bg-[#0cf1414] border-[#1e2130]" value={editItem.name} onChange={e => setEditItem({...editItem, name: e.target.value})} />
+                <Input required className="bg-[#0d0f14] text-white border-[#1e2130]" value={editItem.name} onChange={e => setEditItem({...editItem, name: e.target.value})} />
               </div>
               
               <div className="space-y-2 col-span-2">
                 <Label>Categoría *</Label>
                 <Select required value={editItem.category_id} onValueChange={v => setEditItem({...editItem, category_id: v})}>
-                  <SelectTrigger className="bg-[#0cf1414] border-[#1e2130]"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                  <SelectTrigger className="bg-[#0d0f14] text-white border-[#1e2130]"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
                   <SelectContent className="bg-[#111318] border-[#1e2130]">
                     {safeCategories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>
@@ -402,25 +402,25 @@ const Stock = () => {
 
               <div className="space-y-2">
                 <Label>Unidad *</Label>
-                <Input required className="bg-[#0cf1414] border-[#1e2130]" value={editItem.unit} onChange={e => setEditItem({...editItem, unit: e.target.value})} />
+                <Input required className="bg-[#0d0f14] text-white border-[#1e2130]" value={editItem.unit} onChange={e => setEditItem({...editItem, unit: e.target.value})} />
               </div>
               <div className="space-y-2">
                 <Label>Stock Mín. *</Label>
-                <Input required type="number" min="0" step="0.1" className="bg-[#0cf1414] border-[#1e2130]" value={editItem.min_stock} onChange={e => setEditItem({...editItem, min_stock: e.target.value})} />
+                <Input required type="number" min="0" step="0.1" className="bg-[#0d0f14] text-white border-[#1e2130]" value={editItem.min_stock} onChange={e => setEditItem({...editItem, min_stock: e.target.value})} />
               </div>
 
               <div className="space-y-2">
                 <Label>Proveedor</Label>
-                <Input className="bg-[#0cf1414] border-[#1e2130]" value={editItem.supplier} onChange={e => setEditItem({...editItem, supplier: e.target.value})} />
+                <Input className="bg-[#0d0f14] text-white border-[#1e2130]" value={editItem.supplier} onChange={e => setEditItem({...editItem, supplier: e.target.value})} />
               </div>
               <div className="space-y-2">
                  <Label>Precio Costo</Label>
-                 <Input type="number" step="0.01" className="bg-[#0cf1414] border-[#1e2130]" value={editItem.costPrice} onChange={e => setEditItem({...editItem, costPrice: e.target.value})} />
+                 <Input type="number" step="0.01" className="bg-[#0d0f14] text-white border-[#1e2130]" value={editItem.costPrice} onChange={e => setEditItem({...editItem, costPrice: e.target.value})} />
               </div>
 
               <div className="space-y-2 col-span-2">
                 <Label className="flex items-center gap-2"><Calendar className="w-4 h-4"/> Vencimiento</Label>
-                <Input type="date" className="bg-[#0cf1414] border-[#1e2130]" value={editItem.expiry_date} onChange={e => setEditItem({...editItem, expiry_date: e.target.value})} />
+                <Input type="date" className="bg-[#0d0f14] text-white border-[#1e2130]" value={editItem.expiry_date} onChange={e => setEditItem({...editItem, expiry_date: e.target.value})} />
               </div>
             </div>
           )}

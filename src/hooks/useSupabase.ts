@@ -187,3 +187,65 @@ export function useProfiles() {
         },
     });
 }
+
+// --- ORGANIZATION SETTINGS ---
+export type OrganizationSettings = {
+    id: string;
+    name: string;
+    address?: string;
+    currency?: string;
+    timezone?: string;
+};
+
+export function useOrganizationSettings() {
+    return useQuery({
+        queryKey: ['organization_settings'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('organization_settings')
+                .select('*')
+                .single();
+
+            if (error) {
+                if (error.code === 'PGRST116') {
+                    // Si no existe fila, retornar default
+                    return { id: '1', name: 'Parrilla Don Carlos', address: 'Av. Corrientes 1234, CABA', currency: 'ARS', timezone: 'America/Buenos_Aires' } as OrganizationSettings;
+                }
+                console.error('Error fetching organization_settings:', error);
+                throw new Error(error.message);
+            }
+            return data as OrganizationSettings;
+        },
+    });
+}
+
+export function useUpdateOrganizationSettings() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (settings: Partial<OrganizationSettings>) => {
+            // Upsert asumiendo id '1' si no existe
+            const { data, error } = await supabase
+                .from('organization_settings')
+                .upsert({ id: settings.id || '1', ...settings })
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Error updating organization_settings:', error);
+                throw new Error(error.message);
+            }
+            return data as OrganizationSettings;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['organization_settings'] });
+        },
+    });
+}
+
+
+// --- REQUISICIONES ---
+export type Requisition = { id: string; item: string; categoria: string; cantidadSolicitada: number; unidad: string; estado: string; fecha: string; solicitadoPor: string; };
+
+export function useRequisitions() { return useQuery({ queryKey: ['requisitions'], queryFn: async () => { const { data, error } = await supabase.from('requisitions').select('*').order('fecha', { ascending: false }); if (error) { console.warn('Fallback to mock data for requisitions (table may not exist):', error); const { REQUISICIONES } = await import('../data/mockData'); return REQUISICIONES as Requisition[]; } return data as Requisition[]; } }); }
+
+export function useUpdateRequisition() { const queryClient = useQueryClient(); return useMutation({ mutationFn: async ({ id, estado }: { id: string, estado: string }) => { const { data, error } = await supabase.from('requisitions').update({ estado }).eq('id', id).select().single(); if (error) { console.error('Error updating requisition:', error); throw new Error(error.message); } return data; }, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['requisitions'] }); } }); }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useProducts, useCategories, useUpdateProductStock, useUpdateProductExpiry, useAddMovement } from '@/hooks/useSupabase';
+import { useProducts, useCategories, useUpdateProductStock, useUpdateProductExpiry, useAddMovement, useAddCategory } from '@/hooks/useSupabase';
+import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -23,6 +24,15 @@ const LoadStock = () => {
 
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('all');
+  
+  const [openAdd, setOpenAdd] = useState(false);
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [formData, setFormData] = useState({
+     name: '', category_id: '', unit: '', min_stock: '', supplier: '', costPrice: '', expiry_date: ''
+  });
+
+  const addCategory = useAddCategory();
 
   // Track local un-saved changes to quantities and expiry dates
   const [draftStock, setDraftStock] = useState<Record<string, number>>({});
@@ -140,6 +150,48 @@ const LoadStock = () => {
     }
   };
 
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    try {
+      const newCat = await addCategory.mutateAsync({ name: newCategoryName.trim() });
+      setFormData(prev => ({ ...prev, category_id: newCat.id }));
+      setIsAddingCategory(false);
+      setNewCategoryName('');
+      toast.success('Categoría agregada');
+    } catch (error) {
+      toast.error('Error al agregar categoría');
+    }
+  };
+
+  const handleSaveAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name || !formData.category_id || !formData.unit || formData.min_stock === '') {
+      toast.error('Completá los campos obligatorios');
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase.from('products').insert([{
+        name: formData.name,
+        category_id: formData.category_id,
+        unit: formData.unit,
+        min_stock: parseFloat(formData.min_stock),
+        current_stock: 0,
+        expiry_date: formData.expiry_date || null
+      }]).select().single();
+      
+      if (error) throw error;
+      
+      toast.success('Producto agregado a la base de datos');
+      setOpenAdd(false);
+      setFormData({ name: '', category_id: '', unit: '', min_stock: '', supplier: '', costPrice: '', expiry_date: '' });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+    } catch (error) {
+      toast.error('Error al guardar producto nuevo');
+      console.error(error);
+    }
+  };
+
   const handleDiscard = () => {
     setDraftStock({});
     setDraftExpiry({});
@@ -149,15 +201,17 @@ const LoadStock = () => {
   const isSaving = updateStock.isPending || addMovement.isPending || updateExpiry.isPending;
   const hasDrafts = Object.keys(draftStock).length > 0 || Object.keys(draftExpiry).length > 0;
 
-  // Filter Categories that have matching products
-  const activeCategories = safeCategories.filter(cat => {
-    if (catFilter !== 'all' && cat.id !== catFilter) return false;
-    const items = safeProducts.filter(p => p.category_id === cat.id);
-    if (search) {
-      return items.some(p => p.name.toLowerCase().includes(search.toLowerCase()));
-    }
-    return items.length > 0;
+  // Filter Products globally
+  const filteredProducts = safeProducts.filter(p => {
+    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
+    const matchCat = catFilter === 'all' || p.category_id === catFilter;
+    return matchSearch && matchCat;
   });
+
+  // Then derive active categories
+  const activeCategories = safeCategories.filter(cat => 
+    filteredProducts.some(p => p.category_id === cat.id)
+  );
 
   return (
     <div className="space-y-6 animate-fade-in pb-10" style={{ backgroundColor: '#0d0f14', minHeight: 'calc(100vh - 4rem)', padding: '1.5rem', borderRadius: '0.5rem' }}>
@@ -167,11 +221,14 @@ const LoadStock = () => {
           <p className="text-sm text-muted-foreground mt-1">Actualizá rápidamente las cantidades del inventario</p>
         </div>
         
-        <div className="flex gap-3">
-          <Button variant="outline" className="border-[#1e2130] bg-transparent hover:bg-white/5" onClick={handleDiscard} disabled={!hasDrafts || isSaving}>
+        <div className="flex gap-3 w-full sm:w-auto mt-2 sm:mt-0">
+          <Button onClick={() => setOpenAdd(true)} variant="outline" className="border-primary/50 text-foreground bg-primary/10 hover:bg-primary/20">
+            <Plus className="h-4 w-4 mr-2" /> Nuevo Producto
+          </Button>
+          <Button variant="outline" className="flex-1 sm:flex-none border-[#1e2130] bg-transparent hover:bg-white/5" onClick={handleDiscard} disabled={!hasDrafts || isSaving}>
             <X className="h-4 w-4 mr-2" /> Descartar
           </Button>
-          <Button onClick={handleSave} disabled={!hasDrafts || isSaving} className="bg-primary hover:bg-primary/90 text-white min-w-[150px]">
+          <Button onClick={handleSave} disabled={!hasDrafts || isSaving} className="flex-1 sm:flex-none bg-primary hover:bg-primary/90 text-white min-w-[150px]">
             {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
             Guardar Cambios
           </Button>
@@ -179,17 +236,17 @@ const LoadStock = () => {
       </div>
 
       <div className="flex flex-wrap gap-3 mb-6">
-        <div className="relative">
+        <div className="relative w-full sm:w-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
-            className="pl-9 w-64 bg-[#111318] border-[#1e2130] h-10" 
+            className="pl-9 w-full sm:w-64 bg-[#111318] border-[#1e2130] h-10" 
             placeholder="Buscar producto..." 
             value={search} 
             onChange={e => setSearch(e.target.value)} 
           />
         </div>
         <Select value={catFilter} onValueChange={setCatFilter}>
-          <SelectTrigger className="w-48 bg-[#111318] border-[#1e2130] h-10">
+          <SelectTrigger className="w-full sm:w-48 bg-[#111318] border-[#1e2130] h-10">
             <SelectValue placeholder="Categorías" />
           </SelectTrigger>
           <SelectContent className="bg-[#111318] border-[#1e2130]">
@@ -218,10 +275,7 @@ const LoadStock = () => {
               </thead>
               <tbody>
                 {activeCategories.map(cat => {
-                  let items = safeProducts.filter(p => p.category_id === cat.id);
-                  if (search) {
-                    items = items.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
-                  }
+                  const items = filteredProducts.filter(p => p.category_id === cat.id);
                   
                   return (
                     <React.Fragment key={cat.id}>

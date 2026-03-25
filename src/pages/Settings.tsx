@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,14 +7,25 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Pencil, Trash2, Plus, Tag, Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
-import { useCategories, useAddCategory } from '@/hooks/useSupabase';
+import { useCategories, useAddCategory, useOrganizationSettings, useUpdateOrganizationSettings } from '@/hooks/useSupabase';
 
 const Settings = () => {
   const { data: categories, isLoading: loadingCategories } = useCategories();
   const addCategory = useAddCategory();
+  
+  const { data: orgSettings, isLoading: loadingOrgSettings } = useOrganizationSettings();
+  const updateOrgSettings = useUpdateOrganizationSettings();
 
   const [isAddCatOpen, setIsAddCatOpen] = useState(false);
   const [newCatName, setNewCatName] = useState('');
+
+  const [orgForm, setOrgForm] = useState({ name: '', address: '' });
+
+  useEffect(() => {
+    if (orgSettings) {
+      setOrgForm({ name: orgSettings.name || '', address: orgSettings.address || '' });
+    }
+  }, [orgSettings]);
 
   const safeCategories = categories || [];
 
@@ -33,6 +44,15 @@ const Settings = () => {
       toast.error(error.message || 'Error al agregar la categoría');
     }
   };
+  const handleSaveOrgSettings = async () => {
+    try {
+      await updateOrgSettings.mutateAsync({ name: orgForm.name, address: orgForm.address });
+      toast.success('Perfil del restaurante actualizado');
+    } catch (e: any) {
+      toast.error('Error al actualizar el perfil');
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in max-w-3xl">
       <div>
@@ -43,13 +63,22 @@ const Settings = () => {
       <Card className="shadow-card">
         <CardHeader><CardTitle className="text-base">Perfil del Restaurante</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2"><Label>Nombre</Label><Input defaultValue="Parrilla Don Carlos" /></div>
-            <div className="space-y-2"><Label>Dirección</Label><Input defaultValue="Av. Corrientes 1234, CABA" /></div>
-            <div className="space-y-2"><Label>Moneda</Label><Input defaultValue="ARS" disabled /></div>
-            <div className="space-y-2"><Label>Zona Horaria</Label><Input defaultValue="America/Buenos_Aires" disabled /></div>
-          </div>
-          <Button size="sm" onClick={() => toast.success('Perfil actualizado')}>Guardar</Button>
+          {loadingOrgSettings ? (
+            <div className="flex justify-center py-4"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2"><Label>Nombre</Label><Input value={orgForm.name} onChange={e => setOrgForm({...orgForm, name: e.target.value})} /></div>
+                <div className="space-y-2"><Label>Dirección</Label><Input value={orgForm.address} onChange={e => setOrgForm({...orgForm, address: e.target.value})} /></div>
+                <div className="space-y-2"><Label>Moneda</Label><Input defaultValue="ARS" disabled /></div>
+                <div className="space-y-2"><Label>Zona Horaria</Label><Input defaultValue="America/Buenos_Aires" disabled /></div>
+              </div>
+              <Button size="sm" onClick={handleSaveOrgSettings} disabled={updateOrgSettings.isPending}>
+                {updateOrgSettings.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Guardar
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
 

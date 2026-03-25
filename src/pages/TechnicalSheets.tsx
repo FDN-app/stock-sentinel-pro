@@ -10,7 +10,11 @@ import { ImageIcon, DollarSign, Truck, CalendarDays, Plus, Upload, Save, X } fro
 import { toast } from 'sonner';
 
 const TechnicalSheets = () => {
-  const [fichas, setFichas] = useState(FICHAS_TECNICAS);
+  const [fichas, setFichas] = useState(() => {
+    const saved = localStorage.getItem('sentinel_fichas');
+    if (saved) return JSON.parse(saved);
+    return FICHAS_TECNICAS;
+  });
   const [isOpen, setIsOpen] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -43,7 +47,9 @@ const TechnicalSheets = () => {
       imageUrl: preview || ''
     };
 
-    setFichas([newFicha, ...fichas]);
+    const nextFichas = [newFicha, ...fichas];
+    setFichas(nextFichas);
+    localStorage.setItem('sentinel_fichas', JSON.stringify(nextFichas));
     setIsOpen(false);
     toast.success('Ficha Técnica creada correctamente');
     setFormData({ producto: '', categoria: '', proveedor: '', costoUnitario: '', descripcion: '' });

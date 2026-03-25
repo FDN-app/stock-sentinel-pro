@@ -203,7 +203,8 @@ const LoadStock = () => {
 
   // Filter Products globally
   const filteredProducts = safeProducts.filter(p => {
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
+    const productName = p.name ? p.name.toLowerCase() : '';
+    const matchSearch = productName.includes(search.toLowerCase());
     const matchCat = catFilter === 'all' || p.category_id === catFilter;
     return matchSearch && matchCat;
   });
@@ -239,7 +240,7 @@ const LoadStock = () => {
         <div className="relative w-full sm:w-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
-            className="pl-9 w-full sm:w-64 bg-[#111318] border-[#1e2130] h-10" 
+            className="pl-9 w-full sm:w-64 bg-[#111318] border-[#1e2130] h-10 text-white" 
             placeholder="Buscar producto..." 
             value={search} 
             onChange={e => setSearch(e.target.value)} 

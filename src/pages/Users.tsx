@@ -28,31 +28,31 @@ const Users = () => {
     e.preventDefault();
     setIsSaving(true);
 
-    // Simulated network delay
-    await new Promise(r => setTimeout(r, 1000));
+    try {
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: {
+          email: newEmail,
+          password: newPassword,
+          fullName: newName,
+          role: newRole
+        }
+      });
 
-    const newUser = {
-      id: `local-${Date.now()}`,
-      full_name: newName,
-      email: newEmail,
-      role: newRole,
-      created_at: new Date().toISOString()
-    };
+      if (error) throw error;
 
-    // Optimistic update to React Query cache to reflect immediately across the app
-    queryClient.setQueryData(['profiles'], (old: any) => {
-      return [newUser, ...(old || [])];
-    });
-
-    toast.success(`Usuario ${newName} agregado a la tabla.`);
-    toast.info('Nota: La creación real en Supabase Auth requiere una Edge Function. Este es un mock visual.', { duration: 5000 });
-
-    setOpen(false);
-    setNewName('');
-    setNewEmail('');
-    setNewPassword('');
-    setNewRole('staff');
-    setIsSaving(false);
+      toast.success(`Usuario ${newName} creado correctamente.`);
+      refetch(); // fetch users again to update list
+      
+      setOpen(false);
+      setNewName('');
+      setNewEmail('');
+      setNewPassword('');
+      setNewRole('staff');
+    } catch (error: any) {
+      toast.error('Error al crear usuario: ' + error.message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const safeProfiles = profiles || [];

@@ -5,7 +5,10 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Save, X, Loader2, Plus, Minus, Search } from 'lucide-react';
+import { Save, X, Loader2, Plus, Minus, Search, Box, Tag, Scale, ShieldAlert, Truck, DollarSign, Calendar, Trash2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Label } from '@/components/ui/label';
 import { differenceInDays, format } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
@@ -147,6 +150,18 @@ const LoadStock = () => {
     } catch (error) {
       toast.error('❌ Hubo un error al guardar los cambios.');
       console.error(error);
+    }
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    try {
+      const { error } = await supabase.from('products').delete().eq('id', id);
+      if (error) throw new Error(error.message);
+      
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      toast.success(`Producto "${name}" eliminado`);
+    } catch(err: any) {
+      toast.error('Error al eliminar: ' + err.message);
     }
   };
 
@@ -298,9 +313,30 @@ const LoadStock = () => {
 
                         return (
                           <tr key={item.id} className="border-b border-[#1e2130] hover:bg-[#1a1d27] transition-colors group">
-                            <td className="px-5 py-3 font-medium text-white group-hover:text-primary transition-colors">
-                              {item.name}
-                              {isStockModified && <span className="ml-2 text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded uppercase tracking-wider">Modificado</span>}
+                            <td className="px-5 py-3 font-medium text-white group-hover:text-primary transition-colors flex items-center justify-between min-w-[200px]">
+                              <div>
+                                {item.name}
+                                {isStockModified && <span className="ml-2 text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded uppercase tracking-wider">Modificado</span>}
+                              </div>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/20 text-muted-foreground hover:text-red-500 shrink-0">
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent className="bg-[#111318] border-[#1e2130]">
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Esta acción es permanente y eliminará "{item.name}" del sistema.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel className="bg-transparent border-[#1e2130] hover:bg-white/5">Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction className="bg-red-500 hover:bg-red-600 text-white" onClick={() => handleDelete(item.id, item.name)}>Eliminar</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             </td>
                             <td className="px-5 py-3 text-muted-foreground text-center">{item.unit}</td>
                             <td className="px-5 py-3">
@@ -369,6 +405,74 @@ const LoadStock = () => {
           </div>
         )}
       </div>
+
+      <Dialog open={openAdd} onOpenChange={setOpenAdd}>
+        <DialogContent className="sm:max-w-[500px] border-[#1e2130] bg-[#111318] text-[#f1f5f9] shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-white">Agregar Nuevo Ítem</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSaveAdd} className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+               <div className="space-y-2 col-span-2">
+                 <Label className="flex items-center gap-2"><Box className="w-4 h-4 text-muted-foreground"/> Nombre *</Label>
+                 <Input required className="bg-[#0d0f14] text-white border-[#1e2130]" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Ej. Lomo de Res" />
+               </div>
+
+               <div className="space-y-2 col-span-2">
+                <div className="flex items-center justify-between">
+                  <Label className="flex items-center gap-2"><Tag className="w-4 h-4 text-muted-foreground"/> Categoría *</Label>
+                  <button type="button" onClick={() => setIsAddingCategory(!isAddingCategory)} className="text-xs text-primary hover:text-primary/80 flex items-center">
+                    <Plus className="w-3 h-3 mr-1" /> Nueva
+                  </button>
+                </div>
+                {isAddingCategory ? (
+                  <div className="flex gap-2 items-center">
+                    <Input autoFocus className="bg-[#0d0f14] text-white border-primary/50 flex-1" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} placeholder="Nueva categoría..." />
+                    <Button type="button" size="sm" onClick={handleAddCategory} disabled={addCategory.isPending} className="bg-primary"><Save className="w-4 h-4" /></Button>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => setIsAddingCategory(false)}><X className="w-4 h-4" /></Button>
+                  </div>
+                ) : (
+                  <Select required value={formData.category_id} onValueChange={v => setFormData({...formData, category_id: v})}>
+                    <SelectTrigger className="bg-[#0d0f14] text-white border-[#1e2130]"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+                    <SelectContent className="bg-[#111318] border-[#1e2130]">
+                      {safeCategories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
+               </div>
+
+               <div className="space-y-2">
+                 <Label className="flex items-center gap-2"><Scale className="w-4 h-4 text-muted-foreground"/> Unidad *</Label>
+                 <Input required className="bg-[#0d0f14] text-white border-[#1e2130]" value={formData.unit} onChange={e => setFormData({...formData, unit: e.target.value})} placeholder="Ej. kg, unid" />
+               </div>
+               <div className="space-y-2">
+                 <Label className="flex items-center gap-2"><ShieldAlert className="w-4 h-4 text-muted-foreground"/> Stock Mín. *</Label>
+                 <Input required type="number" min="0" step="0.1" className="bg-[#0d0f14] text-white border-[#1e2130]" value={formData.min_stock} onChange={e => setFormData({...formData, min_stock: e.target.value})} placeholder="0" />
+               </div>
+
+               <div className="space-y-2">
+                 <Label className="flex items-center gap-2"><Truck className="w-4 h-4 text-muted-foreground"/> Proveedor</Label>
+                 <Input className="bg-[#0d0f14] text-white border-[#1e2130]" value={formData.supplier} onChange={e => setFormData({...formData, supplier: e.target.value})} placeholder="Ej. Distribuidora X" />
+               </div>
+               <div className="space-y-2">
+                 <Label className="flex items-center gap-2"><DollarSign className="w-4 h-4 text-muted-foreground"/> Precio Costo</Label>
+                 <Input type="number" step="0.01" className="bg-[#0d0f14] text-white border-[#1e2130]" value={formData.costPrice} onChange={e => setFormData({...formData, costPrice: e.target.value})} placeholder="0.00" />
+               </div>
+
+               <div className="space-y-2 col-span-2">
+                 <Label className="flex items-center gap-2"><Calendar className="w-4 h-4 text-muted-foreground"/> Vencimiento</Label>
+                 <Input type="date" className="bg-[#0d0f14] text-white border-[#1e2130]" value={formData.expiry_date} onChange={e => setFormData({...formData, expiry_date: e.target.value})} />
+               </div>
+            </div>
+            <DialogFooter className="mt-4 pt-4 border-t border-[#1e2130]">
+              <Button type="button" variant="ghost" onClick={() => setOpenAdd(false)}>Cancelar</Button>
+              <Button type="submit" className="bg-primary hover:bg-primary/90 text-white">
+                 <Save className="h-4 w-4 mr-2" /> Guardar
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

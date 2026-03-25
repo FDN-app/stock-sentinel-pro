@@ -7,17 +7,21 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Pencil, Trash2, Plus, Tag, Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
-import { useCategories, useAddCategory, useOrganizationSettings, useUpdateOrganizationSettings } from '@/hooks/useSupabase';
+import { useCategories, useAddCategory, useUpdateCategory, useOrganizationSettings, useUpdateOrganizationSettings } from '@/hooks/useSupabase';
 
 const Settings = () => {
   const { data: categories, isLoading: loadingCategories } = useCategories();
   const addCategory = useAddCategory();
+  const updateCategory = useUpdateCategory();
   
   const { data: orgSettings, isLoading: loadingOrgSettings } = useOrganizationSettings();
   const updateOrgSettings = useUpdateOrganizationSettings();
 
   const [isAddCatOpen, setIsAddCatOpen] = useState(false);
   const [newCatName, setNewCatName] = useState('');
+
+  const [editingCatId, setEditingCatId] = useState<string | null>(null);
+  const [editingCatName, setEditingCatName] = useState('');
 
   const [orgForm, setOrgForm] = useState(() => {
     const saved = localStorage.getItem('sentinel_org_settings');
@@ -59,6 +63,43 @@ const Settings = () => {
     } catch (e: any) {
       console.warn('Supabase org table not found, saved to local storage fallback instead.', e);
     }
+  };
+
+  const startEditingCat = (cat: any) => {
+    setEditingCatId(cat.id);
+    setEditingCatName(cat.name);
+  };
+
+  const handleSaveCatEdit = async () => {
+    if (!editingCatId) return;
+    const cleanName = editingCatName.trim();
+    
+    if (!cleanName) {
+      toast.error('El nombre no puede estar vacío');
+      setEditingCatId(null);
+      return;
+    }
+
+    // prevent saving if unchanged
+    const originalCat = safeCategories.find(c => c.id === editingCatId);
+    if (originalCat && originalCat.name === cleanName) {
+      setEditingCatId(null);
+      return;
+    }
+
+    try {
+      await updateCategory.mutateAsync({ id: editingCatId, name: cleanName });
+      toast.success('Categoría actualizada');
+    } catch (error: any) {
+      toast.error(error.message || 'Error al actualizar la categoría');
+    } finally {
+      setEditingCatId(null);
+    }
+  };
+
+  const handleCatKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleSaveCatEdit();
+    if (e.key === 'Escape') setEditingCatId(null);
   };
 
   return (
@@ -155,9 +196,22 @@ const Settings = () => {
             <div className="space-y-2">
               {safeCategories.map(cat => (
                 <div key={cat.id} className="flex items-center justify-between py-2.5 px-3 rounded-md bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 transition-colors border border-transparent hover:border-white/5">
-                  <span className="text-sm font-medium text-foreground">{cat.name}</span>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-primary"><Pencil className="h-3.5 w-3.5" /></Button>
+                  {editingCatId === cat.id ? (
+                    <Input
+                      autoFocus
+                      className="bg-black/20 h-8 text-sm"
+                      value={editingCatName}
+                      onChange={e => setEditingCatName(e.target.value)}
+                      onBlur={handleSaveCatEdit}
+                      onKeyDown={handleCatKeyDown}
+                    />
+                  ) : (
+                    <span className="text-sm font-medium text-foreground">{cat.name}</span>
+                  )}
+                  <div className="flex gap-1 ml-2">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-primary" onClick={() => startEditingCat(cat)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
                     <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 </div>

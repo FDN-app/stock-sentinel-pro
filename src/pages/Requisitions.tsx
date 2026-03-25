@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Plus, CheckCircle, XCircle, Loader2, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
-import { useRequisitions, useUpdateRequisition } from '@/hooks/useSupabase';
+import { useRequisitions, useUpdateRequisition, useCategories } from '@/hooks/useSupabase';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 
 const statusStyles: Record<string, string> = {
@@ -19,6 +20,7 @@ const statusStyles: Record<string, string> = {
 const Requisitions = () => {
   const { isAdmin, user } = useAuth();
   const { data: requisitions, isLoading } = useRequisitions();
+  const { data: categories } = useCategories();
   const updateReq = useUpdateRequisition();
 
   const [localReqs, setLocalReqs] = useState<any[]>([]);
@@ -104,7 +106,16 @@ const Requisitions = () => {
               </div>
               <div className="space-y-2">
                 <Label>Categoría *</Label>
-                <Input required className="bg-[#0d0f14] border-[#1e2130] text-white" value={formData.categoria} onChange={e => setFormData({...formData, categoria: e.target.value})} placeholder="Ej: Despensa" />
+                <Select required value={formData.categoria} onValueChange={v => setFormData({...formData, categoria: v})}>
+                  <SelectTrigger className="bg-[#0d0f14] border-[#1e2130] text-white">
+                    <SelectValue placeholder="Seleccionar categoría..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#111318] border-[#1e2130]">
+                    {categories?.map(c => (
+                      <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

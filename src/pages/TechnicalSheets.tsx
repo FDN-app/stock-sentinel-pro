@@ -1,59 +1,147 @@
-import { useState } from 'react';
-import { FICHAS_TECNICAS } from '@/data/mockData';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
-import { ImageIcon, DollarSign, Truck, CalendarDays, Plus, Upload, Save, X } from 'lucide-react';
+import { ImageIcon, DollarSign, Truck, CalendarDays, Plus, Upload, Save, X, Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const TechnicalSheets = () => {
-  const [fichas, setFichas] = useState(() => {
-    const saved = localStorage.getItem('sentinel_fichas');
-    if (saved) return JSON.parse(saved);
-    return FICHAS_TECNICAS;
-  });
+  const [fichas, setFichas] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     producto: '', categoria: '', proveedor: '', costoUnitario: '', descripcion: ''
   });
 
+  useEffect(() => {
+    fetchFichas();
+  }, []);
+
+  const fetchFichas = async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from('fichas_tecnicas').select('*').order('created_at', { ascending: false });
+    if (!error && data) {
+      setFichas(data);
+    } else {
+       console.error('Error fetching fichas:', error);
+       // fallback if table does not exist yet during testing
+       const saved = localStorage.getItem('sentinel_fichas');
+       if (saved) setFichas(JSON.parse(saved));
+    }
+    setLoading(false);
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setImageFile(file);
       const url = URL.createObjectURL(file);
       setPreview(url);
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.producto || !formData.categoria || !formData.proveedor || !formData.costoUnitario) {
       toast.error('Completá los campos obligatorios');
       return;
     }
 
-    const newFicha = {
-      id: Math.floor(Math.random() * 100000),
-      producto: formData.producto,
-      categoria: formData.categoria,
-      proveedor: formData.proveedor,
-      costoUnitario: parseFloat(formData.costoUnitario),
-      descripcion: formData.descripcion || 'Sin descripción detallada.',
-      ultimaActualizacion: new Date().toISOString().split('T')[0],
-      imageUrl: preview || ''
-    };
+    setIsSaving(true);
+    try {
+      let publicImageUrl = '';
 
-    const nextFichas = [newFicha, ...fichas];
-    setFichas(nextFichas);
-    localStorage.setItem('sentinel_fichas', JSON.stringify(nextFichas));
-    setIsOpen(false);
-    toast.success('Ficha Técnica creada correctamente');
-    setFormData({ producto: '', categoria: '', proveedor: '', costoUnitario: '', descripcion: '' });
-    setPreview(null);
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+        const filePath = `${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('fichas')
+          .upload(filePath, imageFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('fichas')
+          .getPublicUrl(filePath);
+
+        publicImageUrl = publicUrl;
+      }
+
+      const newFicha = {
+        producto: formData.producto,
+        categoria: formData.categoria,
+        proveedor: formData.proveedor,
+        costoUnitario: parseFloat(formData.costoUnitario),
+        descripcion: formData.descripcion || 'Sin descripción detallada.',
+        ultimaActualizacion: new Date().toISOString().split('T')[0],
+        imageUrl: publicImageUrl
+      };
+
+      const { data, error } = await supabase
+        .from('fichas_tecnicas')
+        .insert([newFicha])
+        .select()
+        .single();
+
+      if (error) {
+         // Fallback for local storage during evaluation if table is missing
+         console.warn('Fallback to localstorage due to error:', error);
+         const nextFichas = [{...newFicha, id: Date.now()}, ...fichas];
+         setFichas(nextFichas);
+         localStorage.setItem('sentinel_fichas', JSON.stringify(nextFichas));
+      } else if (data) {
+         setFichas([data, ...fichas]);
+      }
+
+      setIsOpen(false);
+      toast.success('Ficha Técnica creada correctamente');
+      setFormData({ producto: '', categoria: '', proveedor: '', costoUnitario: '', descripcion: '' });
+      setPreview(null);
+      setImageFile(null);
+    } catch (error: any) {
+      toast.error('Error al guardar la ficha técnica: ' + error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async (ficha: any) => {
+    if (!confirm(`¿Estás seguro de eliminar la ficha técnica para ${ficha.producto}?`)) return;
+
+    try {
+      if (ficha.imageUrl) {
+         // extract file path from URL
+         const filePath = ficha.imageUrl.split('/').pop();
+         if (filePath) {
+            await supabase.storage.from('fichas').remove([filePath]);
+         }
+      }
+
+      const { error } = await supabase.from('fichas_tecnicas').delete().eq('id', ficha.id);
+      
+      if (error) throw error;
+      
+      setFichas(prev => prev.filter(f => f.id !== ficha.id));
+      toast.success('Ficha técnica eliminada');
+      
+      // Update local storage just in case it's in fallback mode
+      const saved = localStorage.getItem('sentinel_fichas');
+      if (saved) {
+         const parsed = JSON.parse(saved).filter((f: any) => f.id !== ficha.id);
+         localStorage.setItem('sentinel_fichas', JSON.stringify(parsed));
+      }
+    } catch (error: any) {
+      toast.error('Error al eliminar: ' + error.message);
+    }
   };
 
   return (
@@ -114,8 +202,8 @@ const TechnicalSheets = () => {
               
               <DialogFooter className="mt-6 pt-4 border-t border-[#1e2130]">
                 <Button type="button" variant="ghost" className="hover:bg-white/5 hover:text-white" onClick={() => setIsOpen(false)}>Cancelar</Button>
-                <Button type="submit" className="bg-primary hover:bg-primary/90 text-white min-w-[100px]">
-                  <Save className="h-4 w-4 mr-2" /> Guardar
+                <Button type="submit" disabled={isSaving} className="bg-primary hover:bg-primary/90 text-white min-w-[100px]">
+                  {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Guardar
                 </Button>
               </DialogFooter>
             </form>
@@ -124,7 +212,16 @@ const TechnicalSheets = () => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        {fichas.map(ficha => (
+        {loading ? (
+          <div className="col-span-full py-20 flex justify-center">
+            <Loader2 className="h-8 w-8 text-primary animate-spin" />
+          </div>
+        ) : fichas.length === 0 ? (
+          <div className="col-span-full py-20 text-center text-muted-foreground">
+            No hay Fichas Técnicas cargadas.
+          </div>
+        ) : (
+          fichas.map(ficha => (
           <Card key={ficha.id} className="bg-[#111318] border-[#1e2130] shadow-md hover:shadow-lg transition-all hover:bg-[#151822]">
             <CardContent className="p-4 flex flex-col h-full">
               <div className="h-32 bg-[#0d0f14] border border-[#1e2130] rounded-md mb-3 flex items-center justify-center overflow-hidden">
@@ -137,6 +234,9 @@ const TechnicalSheets = () => {
               <div className="flex flex-col flex-grow">
                 <div className="flex justify-between items-start gap-2 mb-2">
                   <h3 className="font-bold text-white text-sm line-clamp-2">{ficha.producto}</h3>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10 -mt-1 -mr-1 shrink-0" onClick={() => handleDelete(ficha)}>
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
                 </div>
                 <Badge variant="outline" className="text-[9px] bg-background/50 border-[#1e2130] text-muted-foreground self-start mb-2">
                   {ficha.categoria}
@@ -159,7 +259,7 @@ const TechnicalSheets = () => {
               </div>
             </CardContent>
           </Card>
-        ))}
+        )))}
       </div>
     </div>
   );

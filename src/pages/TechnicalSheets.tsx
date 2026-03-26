@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useCategories } from '@/hooks/useSupabase';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { ImageIcon, DollarSign, Truck, CalendarDays, Plus, Upload, Save, X, Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const TechnicalSheets = () => {
+  const { data: categories } = useCategories();
   const [fichas, setFichas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
@@ -20,23 +23,23 @@ const TechnicalSheets = () => {
     producto: '', categoria: '', proveedor: '', costoUnitario: '', descripcion: ''
   });
 
+  const fetchFichas = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.from('fichas_tecnicas').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      setFichas(data || []);
+    } catch (error: any) {
+      toast.error('Error al cargar las fichas técnicas: ' + error.message);
+      setFichas([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchFichas();
   }, []);
-
-  const fetchFichas = async () => {
-    setLoading(true);
-    const { data, error } = await supabase.from('fichas_tecnicas').select('*').order('created_at', { ascending: false });
-    if (!error && data) {
-      setFichas(data);
-    } else {
-       console.error('Error fetching fichas:', error);
-       // fallback if table does not exist yet during testing
-       const saved = localStorage.getItem('sentinel_fichas');
-       if (saved) setFichas(JSON.parse(saved));
-    }
-    setLoading(false);
-  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -82,8 +85,7 @@ const TechnicalSheets = () => {
         proveedor: formData.proveedor,
         costoUnitario: parseFloat(formData.costoUnitario),
         descripcion: formData.descripcion || 'Sin descripción detallada.',
-        ultimaActualizacion: new Date().toISOString().split('T')[0],
-        imageUrl: publicImageUrl
+        imagen_url: publicImageUrl
       };
 
       const { data, error } = await supabase
@@ -92,16 +94,10 @@ const TechnicalSheets = () => {
         .select()
         .single();
 
-      if (error) {
-         // Fallback for local storage during evaluation if table is missing
-         console.warn('Fallback to localstorage due to error:', error);
-         const nextFichas = [{...newFicha, id: Date.now()}, ...fichas];
-         setFichas(nextFichas);
-         localStorage.setItem('sentinel_fichas', JSON.stringify(nextFichas));
-      } else if (data) {
-         setFichas([data, ...fichas]);
-      }
+      if (error) throw error;
 
+      setFichas([data, ...fichas]);
+      
       setIsOpen(false);
       toast.success('Ficha Técnica creada correctamente');
       setFormData({ producto: '', categoria: '', proveedor: '', costoUnitario: '', descripcion: '' });
@@ -118,9 +114,8 @@ const TechnicalSheets = () => {
     if (!confirm(`¿Estás seguro de eliminar la ficha técnica para ${ficha.producto}?`)) return;
 
     try {
-      if (ficha.imageUrl) {
-         // extract file path from URL
-         const filePath = ficha.imageUrl.split('/').pop();
+      if (ficha.imagen_url) {
+         const filePath = ficha.imagen_url.split('/').pop();
          if (filePath) {
             await supabase.storage.from('fichas').remove([filePath]);
          }
@@ -132,13 +127,6 @@ const TechnicalSheets = () => {
       
       setFichas(prev => prev.filter(f => f.id !== ficha.id));
       toast.success('Ficha técnica eliminada');
-      
-      // Update local storage just in case it's in fallback mode
-      const saved = localStorage.getItem('sentinel_fichas');
-      if (saved) {
-         const parsed = JSON.parse(saved).filter((f: any) => f.id !== ficha.id);
-         localStorage.setItem('sentinel_fichas', JSON.stringify(parsed));
-      }
     } catch (error: any) {
       toast.error('Error al eliminar: ' + error.message);
     }
@@ -184,7 +172,16 @@ const TechnicalSheets = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Categoría *</Label>
-                  <Input required className="bg-[#0d0f14] border-[#1e2130] text-white" value={formData.categoria} onChange={e => setFormData({...formData, categoria: e.target.value})} />
+                  <Select required value={formData.categoria} onValueChange={v => setFormData({...formData, categoria: v})}>
+                    <SelectTrigger className="bg-[#0d0f14] border-[#1e2130] text-white">
+                      <SelectValue placeholder="Seleccionar..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#111318] border-[#1e2130]">
+                      {categories?.map(c => (
+                        <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Proveedor *</Label>
@@ -225,8 +222,8 @@ const TechnicalSheets = () => {
           <Card key={ficha.id} className="bg-[#111318] border-[#1e2130] shadow-md hover:shadow-lg transition-all hover:bg-[#151822]">
             <CardContent className="p-4 flex flex-col h-full">
               <div className="h-32 bg-[#0d0f14] border border-[#1e2130] rounded-md mb-3 flex items-center justify-center overflow-hidden">
-                {(ficha as any).imageUrl ? (
-                  <img src={(ficha as any).imageUrl} alt={ficha.producto} className="h-full w-full object-cover" />
+                {ficha.imagen_url ? (
+                  <img src={ficha.imagen_url} alt={ficha.producto} className="h-full w-full object-cover" />
                 ) : (
                   <ImageIcon className="h-10 w-10 text-muted-foreground/30" />
                 )}

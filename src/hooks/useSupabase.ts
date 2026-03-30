@@ -270,3 +270,56 @@ export type Requisition = { id: string; item: string; categoria: string; cantida
 export function useRequisitions() { return useQuery({ queryKey: ['requisitions'], queryFn: async () => { const { data, error } = await supabase.from('requisitions').select('*').order('fecha', { ascending: false }); if (error) { console.warn('Fallback to mock data for requisitions (table may not exist):', error); const { REQUISICIONES } = await import('../data/mockData'); return REQUISICIONES as Requisition[]; } return data as Requisition[]; } }); }
 
 export function useUpdateRequisition() { const queryClient = useQueryClient(); return useMutation({ mutationFn: async ({ id, estado }: { id: string, estado: string }) => { const { data, error } = await supabase.from('requisitions').update({ estado }).eq('id', id).select().single(); if (error) { console.error('Error updating requisition:', error); throw new Error(error.message); } return data; }, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['requisitions'] }); } }); }
+
+// --- FICHAS TÉCNICAS ---
+export type FichaTecnica = {
+    id: string;
+    producto: string;
+    categoria: string;
+    proveedor: string;
+    costoUnitario: number;
+    descripcion?: string;
+    ultimaActualizacion: string;
+    imageUrl?: string;
+};
+
+export function useTechnicalSheets() {
+    return useQuery({
+        queryKey: ['fichas_tecnicas'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('fichas_tecnicas')
+                .select('*')
+                .order('ultimaActualizacion', { ascending: false });
+
+            if (error) {
+                console.warn('Fallback a mock data para fichas técnicas:', error);
+                const { FICHAS_TECNICAS } = await import('../data/mockData');
+                return FICHAS_TECNICAS as unknown as FichaTecnica[];
+            }
+            return data as FichaTecnica[];
+        },
+    });
+}
+
+export function useAddTechnicalSheet() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (ficha: Omit<FichaTecnica, 'id'>) => {
+            const { data, error } = await supabase
+                .from('fichas_tecnicas')
+                .insert([ficha])
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Error insertando ficha_tecnica:', error);
+                throw new Error(error.message);
+            }
+            return data as FichaTecnica;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['fichas_tecnicas'] });
+        },
+    });
+}

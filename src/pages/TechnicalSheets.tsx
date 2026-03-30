@@ -1,50 +1,40 @@
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { useCategories } from '@/hooks/useSupabase';
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
-import { ImageIcon, DollarSign, Truck, CalendarDays, Plus, Upload, Save, X, Loader2, Trash2 } from 'lucide-react';
+import { ImageIcon, DollarSign, Truck, CalendarDays, Plus, Upload, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTechnicalSheets, useAddTechnicalSheet } from '@/hooks/useSupabase';
 
 const TechnicalSheets = () => {
-  const { data: categories } = useCategories();
+  const { data: sheetsFromDb, isLoading } = useTechnicalSheets();
+  const addSheet = useAddTechnicalSheet();
+
   const [fichas, setFichas] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     producto: '', categoria: '', proveedor: '', costoUnitario: '', descripcion: ''
   });
 
-  const fetchFichas = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.from('fichas_tecnicas').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
-      setFichas(data || []);
-    } catch (error: any) {
-      toast.error('Error al cargar las fichas técnicas: ' + error.message);
-      setFichas([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchFichas();
-  }, []);
+    if (sheetsFromDb) {
+      const saved = localStorage.getItem('sentinel_fichas');
+      if (saved) {
+        setFichas(JSON.parse(saved));
+      } else {
+        setFichas(sheetsFromDb);
+        localStorage.setItem('sentinel_fichas', JSON.stringify(sheetsFromDb));
+      }
+    }
+  }, [sheetsFromDb]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setImageFile(file);
       const url = URL.createObjectURL(file);
       setPreview(url);
     }
@@ -57,79 +47,37 @@ const TechnicalSheets = () => {
       return;
     }
 
-    setIsSaving(true);
+    const baseFicha = {
+      producto: formData.producto,
+      categoria: formData.categoria,
+      proveedor: formData.proveedor,
+      costoUnitario: parseFloat(formData.costoUnitario),
+      descripcion: formData.descripcion || 'Sin descripción detallada.',
+      ultimaActualizacion: new Date().toISOString().split('T')[0],
+      imageUrl: preview || ''
+    };
+
+    // Optimistic fallback
+    const newFichaLocal = {
+      id: Math.floor(Math.random() * 100000).toString(),
+      ...baseFicha
+    };
+
+    const nextFichas = [newFichaLocal, ...fichas];
+    setFichas(nextFichas);
+    localStorage.setItem('sentinel_fichas', JSON.stringify(nextFichas));
+    setIsOpen(false);
+    toast.success('Ficha Técnica creada localmente');
+    
+    // Attempt backend save
     try {
-      let publicImageUrl = '';
-
-      if (imageFile) {
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-        const filePath = `${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('fichas')
-          .upload(filePath, imageFile);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('fichas')
-          .getPublicUrl(filePath);
-
-        publicImageUrl = publicUrl;
-      }
-
-      const newFicha = {
-        producto: formData.producto,
-        categoria: formData.categoria,
-        proveedor: formData.proveedor,
-        costoUnitario: parseFloat(formData.costoUnitario),
-        descripcion: formData.descripcion || 'Sin descripción detallada.',
-        imagen_url: publicImageUrl
-      };
-
-      const { data, error } = await supabase
-        .from('fichas_tecnicas')
-        .insert([newFicha])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setFichas([data, ...fichas]);
-      
-      setIsOpen(false);
-      toast.success('Ficha Técnica creada correctamente');
-      setFormData({ producto: '', categoria: '', proveedor: '', costoUnitario: '', descripcion: '' });
-      setPreview(null);
-      setImageFile(null);
-    } catch (error: any) {
-      toast.error('Error al guardar la ficha técnica: ' + error.message);
-    } finally {
-      setIsSaving(false);
+      await addSheet.mutateAsync(baseFicha);
+    } catch (error) {
+       console.warn('Backend unavailable, relying on localStorage for Fichas', error);
     }
-  };
 
-  const handleDelete = async (ficha: any) => {
-    if (!confirm(`¿Estás seguro de eliminar la ficha técnica para ${ficha.producto}?`)) return;
-
-    try {
-      if (ficha.imagen_url) {
-         const filePath = ficha.imagen_url.split('/').pop();
-         if (filePath) {
-            await supabase.storage.from('fichas').remove([filePath]);
-         }
-      }
-
-      const { error } = await supabase.from('fichas_tecnicas').delete().eq('id', ficha.id);
-      
-      if (error) throw error;
-      
-      setFichas(prev => prev.filter(f => f.id !== ficha.id));
-      toast.success('Ficha técnica eliminada');
-    } catch (error: any) {
-      toast.error('Error al eliminar: ' + error.message);
-    }
+    setFormData({ producto: '', categoria: '', proveedor: '', costoUnitario: '', descripcion: '' });
+    setPreview(null);
   };
 
   return (
@@ -172,16 +120,7 @@ const TechnicalSheets = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Categoría *</Label>
-                  <Select required value={formData.categoria} onValueChange={v => setFormData({...formData, categoria: v})}>
-                    <SelectTrigger className="bg-[#0d0f14] border-[#1e2130] text-white">
-                      <SelectValue placeholder="Seleccionar..." />
-                    </SelectTrigger>
-                    <SelectContent className="bg-[#111318] border-[#1e2130]">
-                      {categories?.map(c => (
-                        <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Input required className="bg-[#0d0f14] border-[#1e2130] text-white" value={formData.categoria} onChange={e => setFormData({...formData, categoria: e.target.value})} />
                 </div>
                 <div className="space-y-2">
                   <Label>Proveedor *</Label>
@@ -199,8 +138,8 @@ const TechnicalSheets = () => {
               
               <DialogFooter className="mt-6 pt-4 border-t border-[#1e2130]">
                 <Button type="button" variant="ghost" className="hover:bg-white/5 hover:text-white" onClick={() => setIsOpen(false)}>Cancelar</Button>
-                <Button type="submit" disabled={isSaving} className="bg-primary hover:bg-primary/90 text-white min-w-[100px]">
-                  {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Guardar
+                <Button type="submit" disabled={addSheet.isPending} className="bg-primary hover:bg-primary/90 text-white min-w-[100px]">
+                  {addSheet.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Guardar
                 </Button>
               </DialogFooter>
             </form>
@@ -209,21 +148,15 @@ const TechnicalSheets = () => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        {loading ? (
-          <div className="col-span-full py-20 flex justify-center">
-            <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          </div>
-        ) : fichas.length === 0 ? (
-          <div className="col-span-full py-20 text-center text-muted-foreground">
-            No hay Fichas Técnicas cargadas.
-          </div>
+        {isLoading ? (
+          <div className="col-span-full py-12 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
         ) : (
           fichas.map(ficha => (
           <Card key={ficha.id} className="bg-[#111318] border-[#1e2130] shadow-md hover:shadow-lg transition-all hover:bg-[#151822]">
             <CardContent className="p-4 flex flex-col h-full">
               <div className="h-32 bg-[#0d0f14] border border-[#1e2130] rounded-md mb-3 flex items-center justify-center overflow-hidden">
-                {ficha.imagen_url ? (
-                  <img src={ficha.imagen_url} alt={ficha.producto} className="h-full w-full object-cover" />
+                {ficha.imageUrl ? (
+                  <img src={ficha.imageUrl} alt={ficha.producto} className="h-full w-full object-cover" />
                 ) : (
                   <ImageIcon className="h-10 w-10 text-muted-foreground/30" />
                 )}
@@ -231,9 +164,6 @@ const TechnicalSheets = () => {
               <div className="flex flex-col flex-grow">
                 <div className="flex justify-between items-start gap-2 mb-2">
                   <h3 className="font-bold text-white text-sm line-clamp-2">{ficha.producto}</h3>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10 -mt-1 -mr-1 shrink-0" onClick={() => handleDelete(ficha)}>
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
                 </div>
                 <Badge variant="outline" className="text-[9px] bg-background/50 border-[#1e2130] text-muted-foreground self-start mb-2">
                   {ficha.categoria}
@@ -246,7 +176,7 @@ const TechnicalSheets = () => {
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <DollarSign className="h-3 w-3 text-primary" />
-                    <span className="font-medium text-white">${ficha.costoUnitario.toLocaleString('es-AR')}</span> / unidad
+                    <span className="font-medium text-white">${Number(ficha.costoUnitario).toLocaleString('es-AR')}</span> / unidad
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <CalendarDays className="h-3 w-3" />
